@@ -52,33 +52,33 @@ export default {
 </script>
 
 <template>
-  <div class="q-pa-md">
-    <q-table
-      flat
-      bordered
-      title="Received Events"
-      :rows="messages"
-      :columns="columns"
-      v-model:pagination="pagination"
-      no-data-label="Waiting for events..."
-      row-key="id"
-    >
-      <template v-slot:body="props">
-        <q-tr
-          class="cursor-pointer"
-          :props="props"
-          @click="onRowClick(props.row)"
-        >
-          <q-td key="content" :props="props">
-            {{ props.row.content }}
-          </q-td>
-          <q-td key="receivedAt" :props="props">
-            {{ props.row.receivedAt }}
-          </q-td>
-        </q-tr>
-      </template>
-    </q-table>
-  </div>
+  <q-table
+    flat
+    bordered
+    title="Received Events"
+    :rows="messages"
+    :columns="columns"
+    v-model:pagination="pagination"
+    no-data-label="Waiting for events..."
+    row-key="id"
+    class="col full-width"
+    :rows-per-page-options="[0]"
+  >
+    <template v-slot:body="props">
+      <q-tr
+        class="cursor-pointer"
+        :props="props"
+        @click="onRowClick(props.row)"
+      >
+        <q-td key="content" :props="props">
+          {{ props.row.content }}
+        </q-td>
+        <q-td key="receivedAt" :props="props">
+          {{ props.row.receivedAt }}
+        </q-td>
+      </q-tr>
+    </template>
+  </q-table>
 </template>
 
 <style scoped></style>
