@@ -1,11 +1,14 @@
 <script lang="ts">
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed } from "vue";
 import type { main } from "../../wailsjs/go/models";
 import { GetMessages } from "../../wailsjs/go/main/App";
+import { useQuasar } from "quasar";
 
 export default {
   setup(props, { emit }) {
+    const $q = useQuasar();
     const messages = ref([]);
+    const isDark = computed(() => $q.dark.isActive);
 
     const fetchMessages = async () => {
       try {
@@ -36,6 +39,7 @@ export default {
     return {
       messages,
       onRowClick,
+      isDark,
     };
   },
 };
@@ -54,11 +58,22 @@ export default {
     <template v-slot:before>
       <thead>
         <tr>
-          <th class="bg-primary text-left text-black no-pointer-events">#</th>
-          <th class="bg-primary text-left text-black no-pointer-events">
+          <th
+            :class="{ 'th-dark': isDark, 'th-light': !isDark }"
+            class="text-left"
+          >
+            #
+          </th>
+          <th
+            :class="{ 'th-dark': isDark, 'th-light': !isDark }"
+            class="text-left"
+          >
             Content
           </th>
-          <th class="bg-primary text-left text-black no-pointer-events">
+          <th
+            :class="{ 'th-dark': isDark, 'th-light': !isDark }"
+            class="text-left"
+          >
             Received At
           </th>
         </tr>
@@ -74,28 +89,42 @@ export default {
   </q-virtual-scroll>
 </template>
 
-<style scoped>
-.q-virtual-scroll {
-  overflow-y: auto;
-}
+<style lang="sass" scoped>
+.q-virtual-scroll
+  overflow-y: auto
 
-th {
-  position: sticky;
-  top: 0;
-  background-color: white;
-  z-index: 1;
-  padding: 8px 16px;
-}
+// Common header styles mixin
+%th-common
+  position: sticky
+  top: 0
+  z-index: 1
+  padding: 8px 16px
+  transition: all 0.3s ease
+  font-weight: 500
 
-td {
-  padding: 8px 16px;
-}
+.th-light
+  @extend %th-common
+  background-color: $deep-purple-1
+  color: $deep-purple-10
 
-tr {
-  cursor: pointer;
-}
+.th-dark
+  @extend %th-common
+  background-color: $deep-purple-10
+  color: $deep-purple-1
 
-tr:hover {
-  background-color: rgba(0, 0, 0, 0.03);
-}
+td
+  padding: 8px 16px
+
+tr
+  cursor: pointer
+
+  &:hover
+    background-color: rgba(0, 0, 0, 0.05)
+    transition: background-color 0.2s ease
+
+// Dark mode specific hover
+:deep(.body--dark) tr
+  &:hover
+    background-color: rgba(255, 255, 255, 0.1)
+    transition: background-color 0.2s ease
 </style>
