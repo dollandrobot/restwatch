@@ -17,5 +17,5 @@ import {Dark} from 'quasar'
 
 
 
-export default { config: {},plugins: {Dark} }
+export default { config: {"dark":"auto"},plugins: {Dark} }
 

@@ -1,43 +1,19 @@
 export namespace main {
 	
-	export class Message {
-	    publishTime: string;
-	    data: string;
-	    messageId: string;
-	    attributes: Record<string, string>;
-	    ExtractedData: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new Message(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.publishTime = source["publishTime"];
-	        this.data = source["data"];
-	        this.messageId = source["messageId"];
-	        this.attributes = source["attributes"];
-	        this.ExtractedData = source["ExtractedData"];
-	    }
-	}
-	export class PubSubMessage {
+	export class SimpleMessage {
 	    id: string;
-	    subscription: string;
-	    message: Message;
-	    rawMessage: string;
+	    content: string;
 	    // Go type: time
 	    receivedAt: any;
 	
 	    static createFrom(source: any = {}) {
-	        return new PubSubMessage(source);
+	        return new SimpleMessage(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.subscription = source["subscription"];
-	        this.message = this.convertValues(source["message"], Message);
-	        this.rawMessage = source["rawMessage"];
+	        this.content = source["content"];
 	        this.receivedAt = this.convertValues(source["receivedAt"], null);
 	    }
 	

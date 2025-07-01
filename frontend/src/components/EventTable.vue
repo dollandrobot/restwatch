@@ -1,49 +1,84 @@
 <script lang="ts">
+import { ref } from "vue";
+import type { main } from "../../wailsjs/go/models";
+
+const pagination = {
+  rowsPerPage: 25,
+  sortBy: "receivedAt",
+  descending: true,
+};
+
 const columns = [
   {
-    name: 'name',
+    name: "content",
     required: true,
-    label: 'Event',
-    align: 'left',
-    field: row => row.RawMessage,
-    format: val => `${val}`,
-    sortable: true
+    label: "Event",
+    align: "left",
+    field: (row) => row.content,
+    format: (val) => `${val}`,
+    sortable: true,
   },
   {
-    name: 'receivedAt',
+    name: "receivedAt",
     required: true,
-    label: 'Received At',
-    align: 'left',
-    field: row => row.receivedAt,
-    format: val => `${val}`,
-    sortable: true
-  }
-]
+    label: "Received At",
+    align: "left",
+    field: (row) => row.receivedAt,
+    format: (val) => `${val}`,
+    sortable: true,
+    sortOrder: "da",
+  },
+];
 
-const rows = []
+const messages = ref([]);
+
+const onReceiveMessage = (message: main.SimpleMessage) => {
+  console.log("received", message);
+  messages.value.unshift(message);
+};
+
+window.runtime.EventsOn("messageReceived", onReceiveMessage);
 
 export default {
-  setup () {
+  setup() {
     return {
       columns,
-      rows
-    }
-  }
-}
+      messages,
+      pagination,
+      onRowClick: (row) => alert(`${row.id} clicked`),
+    };
+  },
+};
 </script>
-
 
 <template>
   <div class="q-pa-md">
     <q-table
-        title="Treats"
-        :rows="rows"
-        :columns="columns"
-        row-key="name"
-    />
+      flat
+      bordered
+      title="Received Events"
+      :rows="messages"
+      :columns="columns"
+      v-model:pagination="pagination"
+      no-data-label="Waiting for events..."
+      row-key="id"
+    >
+      <template v-slot:body="props">
+        <q-tr
+          class="cursor-pointer"
+          :props="props"
+          @click="onRowClick(props.row)"
+        >
+          <q-td key="content" :props="props">
+            {{ props.row.content }}
+          </q-td>
+          <q-td key="receivedAt" :props="props">
+            {{ props.row.receivedAt }}
+          </q-td>
+        </q-tr>
+      </template>
+    </q-table>
   </div>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

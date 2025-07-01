@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -13,16 +15,16 @@ import (
 type App struct {
 	ctx            context.Context
 	simulationMode bool
-	statusChannel  chan PubSubMessage
-	messages       []PubSubMessage
+	statusChannel  chan SimpleMessage
+	messages       []SimpleMessage
 }
 
 // NewApp creates a new App application struct
-func NewApp(ch chan PubSubMessage) *App {
+func NewApp(ch chan SimpleMessage) *App {
 	return &App{
 		statusChannel:  ch,
 		simulationMode: true,
-		messages:       []PubSubMessage{{RawMessage: "{}"}},
+		messages:       []SimpleMessage{},
 	}
 }
 
@@ -31,15 +33,17 @@ func NewApp(ch chan PubSubMessage) *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
+	runtime.LogSetLogLevel(a.ctx, logger.DEBUG)
 	if a.simulationMode {
 		slog.Info("Running in offline mode")
 		go a.runSimulationMode()
 	} else {
 		go a.processingIncoming()
+		go a.launchHandler(a.statusChannel)
 	}
 }
 
-func (a *App) GetMessages() []PubSubMessage {
+func (a *App) GetMessages() []SimpleMessage {
 	return a.messages
 }
 
@@ -47,12 +51,19 @@ func (a *App) runSimulationMode() {
 	cnt := 0
 	for {
 		cnt += 1
-		val := fmt.Sprintf(`{"name":"event-%d"}`, cnt)
-		msg := PubSubMessage{
-			RawMessage: val,
+		val := fmt.Sprintf(`{"name":"simulated-event-%d"}`, cnt)
+
+		id, err := uuid.NewV7()
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
+		}
+
+		msg := SimpleMessage{
+			Id:         id.String(),
+			Content:    val,
 			ReceivedAt: time.Now(),
 		}
-		runtime.LogPrintf(a.ctx, "Received message: %s", msg)
+		runtime.LogPrintf(a.ctx, "Sending message: %s", msg)
 		a.messages = append(a.messages, msg)
 		runtime.EventsEmit(a.ctx, "messageReceived", msg)
 

@@ -3,50 +3,54 @@ package main
 import (
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-type PubSubMessage struct {
-	Id           string    `json:"id"`
-	Subscription string    `json:"subscription"`
-	Message      Message   `json:"message"`
-	RawMessage   string    `json:"rawMessage"`
-	ReceivedAt   time.Time `json:"receivedAt"`
+type SimpleMessage struct {
+	Id         string    `json:"id"`
+	Content    string    `json:"content"`
+	ReceivedAt time.Time `json:"receivedAt"`
 }
 
-type Message struct {
-	PublishTime   string            `json:"publishTime"`
-	Data          string            `json:"data"`
-	MessageId     string            `json:"messageId"`
-	Attributes    map[string]string `json:"attributes"`
-	ExtractedData string
-}
+// type PubSubMessage struct {
+// 	PublishTime   string            `json:"publishTime"`
+// 	Data          string            `json:"data"`
+// 	MessageId     string            `json:"messageId"`
+// 	Attributes    map[string]string `json:"attributes"`
+// 	ExtractedData string
+// }
 
-func LaunchHandler(statusChannel chan PubSubMessage) {
+func (a *App) launchHandler(statusChannel chan SimpleMessage) {
 	subpath := "/messages"
 	port := 2999
-	http.HandleFunc(subpath, messageHandler(statusChannel))
+	http.HandleFunc(subpath, a.messageHandler(statusChannel))
 
-	fmt.Printf("Listening on port %d at %s\n", port, subpath)
+	runtime.LogInfof(a.ctx, "Listening on port %d at %s", port, subpath)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 		panic(err)
 	}
 }
 
-func messageHandler(statusChannel chan PubSubMessage) http.HandlerFunc {
+func (a *App) messageHandler(statusChannel chan SimpleMessage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			fmt.Printf("could not read body: %s\n", err)
+			runtime.LogErrorf(a.ctx, "could not read body: %s", err)
 		}
 
-		msg := PubSubMessage{
-			RawMessage: string(body),
+		id, err := uuid.NewV7()
+		if err != nil {
+			runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
+		}
+		msg := SimpleMessage{
+			Id:         id.String(),
+			Content:    string(body),
 			ReceivedAt: time.Now(),
 		}
-		slog.Info(fmt.Sprintf("Received message: %+v", msg))
 
 		//err = json.Unmarshal(body, &msg)
 		//if err != nil {
