@@ -50,22 +50,25 @@ func (a *App) GetMessages() []SimpleMessage {
 func (a *App) runSimulationMode() {
 	cnt := 0
 	for {
-		cnt += 1
-		val := fmt.Sprintf(`{"name":"simulated-event-%d"}`, cnt)
 
-		id, err := uuid.NewV7()
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
-		}
+		for range 4 {
+			cnt += 1
+			val := fmt.Sprintf(`{"name":"simulated-event-%d"}`, cnt)
 
-		msg := SimpleMessage{
-			Id:         id.String(),
-			Content:    val,
-			ReceivedAt: time.Now(),
+			id, err := uuid.NewV7()
+			if err != nil {
+				runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
+			}
+
+			msg := SimpleMessage{
+				Id:         id.String(),
+				Content:    val,
+				ReceivedAt: time.Now(),
+			}
+			runtime.LogPrintf(a.ctx, "Sending message: %s", msg)
+			a.messages = append(a.messages, msg)
+			runtime.EventsEmit(a.ctx, "messageReceived", msg)
 		}
-		runtime.LogPrintf(a.ctx, "Sending message: %s", msg)
-		a.messages = append(a.messages, msg)
-		runtime.EventsEmit(a.ctx, "messageReceived", msg)
 
 		channel := make(chan bool)
 		// this is a goroutine which executes asynchronously
@@ -77,7 +80,6 @@ func (a *App) runSimulationMode() {
 
 		// setup a channel listener
 		<-channel
-		runtime.LogPrintf(a.ctx, "Received value from channel: %+v", val)
 	}
 }
 

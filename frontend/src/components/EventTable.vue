@@ -3,7 +3,6 @@ import { ref } from "vue";
 import type { main } from "../../wailsjs/go/models";
 
 const pagination = {
-  rowsPerPage: 25,
   sortBy: "receivedAt",
   descending: true,
 };
@@ -61,8 +60,10 @@ export default {
     v-model:pagination="pagination"
     no-data-label="Waiting for events..."
     row-key="id"
-    class="col full-width"
+    class="col full-width event-table"
     :rows-per-page-options="[0]"
+    virtual-scroll
+    hide-pagination
   >
     <template v-slot:body="props">
       <q-tr
@@ -81,4 +82,22 @@ export default {
   </q-table>
 </template>
 
-<style scoped></style>
+<style scoped>
+.event-table {
+  height: 99%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.event-table .q-table__middle {
+  flex: 1;
+  overflow: auto;
+}
+
+.q-table__bottom {
+  position: sticky;
+  bottom: 0;
+  background-color: inherit;
+}
+</style>
