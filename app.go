@@ -79,16 +79,21 @@ func (a *App) runSimulationMode() {
 			runtime.EventsEmit(a.ctx, "messageReceived", msg)
 		}
 
-		channel := make(chan bool)
+		channel := make(chan struct{})
 		// this is a goroutine which executes asynchronously
 		go func() {
 			time.Sleep(5 * time.Second)
 			// send a message to the channel
-			channel <- true
+			channel <- struct{}{}
 		}()
 
 		// setup a channel listener
-		<-channel
+		select {
+		case <-channel:
+			// success
+		case <-time.After(10 * time.Second):
+			// timeout handling
+		}
 	}
 }
 
