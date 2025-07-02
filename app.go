@@ -17,14 +17,23 @@ type App struct {
 	simulationMode bool
 	statusChannel  chan SimpleMessage
 	messages       []SimpleMessage
+	userOptions    UserOptions
 }
 
 // NewApp creates a new App application struct
 func NewApp(ch chan SimpleMessage) *App {
+	options, err := loadUserOptions()
+	if err != nil {
+		slog.Error("Cannot determine config directory. Options will not be saved")
+	}
+
+	saveUserOptions(options)
+
 	return &App{
 		statusChannel:  ch,
 		simulationMode: true,
 		messages:       []SimpleMessage{},
+		userOptions:    options,
 	}
 }
 
