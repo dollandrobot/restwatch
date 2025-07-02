@@ -26,7 +26,9 @@ func loadUserOptions() (UserOptions, error) {
 	}
 
 	if b, err := os.ReadFile(filepath.Join(configDir, "settings.json")); err == nil {
-		json.Unmarshal(b, &opts)
+		if err := json.Unmarshal(b, &opts); err != nil {
+			return opts, err
+		}
 	} else if !os.IsNotExist(err) {
 		return opts, err
 	}
