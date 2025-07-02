@@ -17,14 +17,23 @@ type App struct {
 	simulationMode bool
 	statusChannel  chan SimpleMessage
 	messages       []SimpleMessage
+	userOptions    UserOptions
 }
 
 // NewApp creates a new App application struct
 func NewApp(ch chan SimpleMessage) *App {
+	options, err := loadUserOptions()
+	if err != nil {
+		slog.Error("Cannot determine config directory. Options will not be saved")
+	}
+
+	saveUserOptions(options)
+
 	return &App{
 		statusChannel:  ch,
 		simulationMode: true,
 		messages:       []SimpleMessage{},
+		userOptions:    options,
 	}
 }
 
@@ -50,34 +59,41 @@ func (a *App) GetMessages() []SimpleMessage {
 func (a *App) runSimulationMode() {
 	cnt := 0
 	for {
-		cnt += 1
-		val := fmt.Sprintf(`{"name":"simulated-event-%d"}`, cnt)
 
-		id, err := uuid.NewV7()
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
+		for range 4 {
+			cnt += 1
+			val := fmt.Sprintf(`{"name":"simulated-event-%d"}`, cnt)
+
+			id, err := uuid.NewV7()
+			if err != nil {
+				runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
+			}
+
+			msg := SimpleMessage{
+				Id:         id.String(),
+				Content:    val,
+				ReceivedAt: time.Now(),
+			}
+			runtime.LogPrintf(a.ctx, "Sending message: %s", msg)
+			a.messages = append(a.messages, msg)
+			runtime.EventsEmit(a.ctx, "messageReceived", msg)
 		}
 
-		msg := SimpleMessage{
-			Id:         id.String(),
-			Content:    val,
-			ReceivedAt: time.Now(),
-		}
-		runtime.LogPrintf(a.ctx, "Sending message: %s", msg)
-		a.messages = append(a.messages, msg)
-		runtime.EventsEmit(a.ctx, "messageReceived", msg)
-
-		channel := make(chan bool)
+		channel := make(chan struct{})
 		// this is a goroutine which executes asynchronously
 		go func() {
 			time.Sleep(5 * time.Second)
 			// send a message to the channel
-			channel <- true
+			channel <- struct{}{}
 		}()
 
 		// setup a channel listener
-		<-channel
-		runtime.LogPrintf(a.ctx, "Received value from channel: %+v", val)
+		select {
+		case <-channel:
+			// success
+		case <-time.After(10 * time.Second):
+			// timeout handling
+		}
 	}
 }
 
