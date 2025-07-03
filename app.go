@@ -26,8 +26,10 @@ func NewApp(ch chan SimpleMessage) *App {
 	if err != nil {
 		slog.Error("Cannot determine config directory. Options will not be saved")
 	}
-
-	saveUserOptions(options)
+	err = saveUserOptions(options)
+	if err != nil {
+		slog.Error("Cannot save options")
+	}
 
 	return &App{
 		statusChannel:  ch,
@@ -56,6 +58,15 @@ func (a *App) GetMessages() []SimpleMessage {
 	return a.messages
 }
 
+func (a *App) GetUserOptions() UserOptions {
+	return a.userOptions
+}
+
+func (a *App) SaveUserOptions(opts UserOptions) error {
+	a.userOptions = opts
+	return saveUserOptions(opts)
+}
+
 func (a *App) runSimulationMode() {
 	cnt := 0
 	for {
@@ -74,9 +85,8 @@ func (a *App) runSimulationMode() {
 				Content:    val,
 				ReceivedAt: time.Now(),
 			}
-			runtime.LogPrintf(a.ctx, "Sending message: %s", msg)
-			a.messages = append(a.messages, msg)
-			runtime.EventsEmit(a.ctx, "messageReceived", msg)
+			a.receiveNewMessage(msg)
+
 		}
 
 		channel := make(chan struct{})
@@ -97,12 +107,25 @@ func (a *App) runSimulationMode() {
 	}
 }
 
+func (a *App) receiveNewMessage(msg SimpleMessage) {
+	slog.Info("Received message", "message", msg)
+
+	a.messages = append(a.messages, msg)
+	// Limit messages to MaxMessagesToKeep
+	slog.Info(fmt.Sprintf("MessagesToKeep %d of %d", a.userOptions.MaxMessagesToKeep, len(a.messages)))
+	if len(a.messages) > a.userOptions.MaxMessagesToKeep && a.userOptions.MaxMessagesToKeep > 0 {
+		excess := len(a.messages) - a.userOptions.MaxMessagesToKeep
+		slog.Info(fmt.Sprintf("Trimming %d messages from store", excess))
+		a.messages = a.messages[excess:]
+	}
+
+	runtime.EventsEmit(a.ctx, "messageReceived", msg)
+}
+
 func (a *App) processingIncoming() {
 	slog.Info("Processing incoming messages...")
 	for {
 		msg := <-a.statusChannel
-		slog.Info("Received message", "message", msg)
-		a.messages = append(a.messages, msg)
-		runtime.EventsEmit(a.ctx, "messageReceived", msg)
+		a.receiveNewMessage(msg)
 	}
 }

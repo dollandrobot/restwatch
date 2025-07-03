@@ -5,3 +5,11 @@
 export function GetMessages() {
   return window['go']['main']['App']['GetMessages']();
 }
+
+export function GetUserOptions() {
+  return window['go']['main']['App']['GetUserOptions']();
+}
+
+export function SaveUserOptions(arg1) {
+  return window['go']['main']['App']['SaveUserOptions'](arg1);
+}

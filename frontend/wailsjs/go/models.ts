@@ -35,6 +35,24 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class UserOptions {
+	    port: number;
+	    maxMessagesToKeep: number;
+	    defaultEndpoint: string;
+	    jumpToLatest: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new UserOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.port = source["port"];
+	        this.maxMessagesToKeep = source["maxMessagesToKeep"];
+	        this.defaultEndpoint = source["defaultEndpoint"];
+	        this.jumpToLatest = source["jumpToLatest"];
+	    }
+	}
 
 }
 

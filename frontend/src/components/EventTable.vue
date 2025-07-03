@@ -7,6 +7,8 @@ import {
   computed,
   nextTick,
 } from "vue";
+import type { ComponentPublicInstance } from "vue";
+import type { QVirtualScroll } from "quasar";
 import type { main } from "../../wailsjs/go/models";
 import { GetMessages } from "../../wailsjs/go/main/App";
 import { useQuasar } from "quasar";
@@ -14,16 +16,20 @@ import { useQuasar } from "quasar";
 export default {
   setup(props, { emit }) {
     const $q = useQuasar();
-    const virtualListRef = ref(null);
-    const messages = ref([]);
+    const virtualListRef = ref<ComponentPublicInstance<
+      typeof QVirtualScroll
+    > | null>(null);
+    const messages = ref<main.SimpleMessage[]>([]);
     const isDark = computed(() => $q.dark.isActive);
     const automaticScrolling = ref(false);
     const scrollToLatest = ref(true);
+    const userOptions = ref<main.UserOptions>(null);
 
     const fetchMessages = async () => {
       try {
         const result = await GetMessages();
-        messages.value = result;
+        const excess = result.size - userOptions.value.maxMessagesToKeep;
+        messages.value = excess > 0 ? result.slice(excess) : result;
         executeScroll();
       } catch (error) {
         console.log("error getting existing messages", error);
@@ -31,7 +37,7 @@ export default {
     };
 
     const executeScroll = () => {
-      if (scrollToLatest.value) {
+      if (scrollToLatest.value && virtualListRef.value) {
         automaticScrolling.value = true;
         virtualListRef.value.scrollTo(messages.value.length - 1, "start-force");
         // Delay resetting automaticScrolling to ensure the scroll animation completes
@@ -56,14 +62,16 @@ export default {
       }
     };
 
-    const onRowClick = (row) => {
+    const onRowClick = (row: main.SimpleMessage) => {
       scrollToLatest.value = false;
       emit("row-click", row.id);
     };
 
     onMounted(async () => {
       await fetchMessages();
-      virtualListRef.value.scrollTo(0);
+      if (virtualListRef.value !== null) {
+        virtualListRef.value.scrollTo(0);
+      }
       window.runtime.EventsOn("messageReceived", onReceiveMessage);
     });
 
@@ -85,8 +93,8 @@ export default {
       onVirtualScroll,
       executeScroll,
       scrollToLatest,
-      settings: ref(false),
-
+      userOptions,
+      showSettings: ref(false),
       slideVol: ref(39),
       slideAlarm: ref(56),
       slideVibration: ref(63),
@@ -104,7 +112,13 @@ export default {
         name="settings"
         size="2em"
         class="cursor-pointer"
-        @click="settings = true"
+        @click="showSettings = true"
+      />
+      <q-icon
+        name="settings"
+        size="2em"
+        class="cursor-pointer"
+        @click="showSettings = true"
       />
     </div>
   </div>
@@ -152,7 +166,7 @@ export default {
     </template>
   </q-virtual-scroll>
 
-  <q-dialog v-model="settings">
+  <q-dialog v-model="showSettings">
     <q-card style="width: 300px" class="q-px-sm q-pb-md">
       <q-card-section>
         <div class="text-h6">Volumes</div>

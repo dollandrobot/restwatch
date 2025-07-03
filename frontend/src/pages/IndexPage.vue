@@ -1,10 +1,27 @@
 <script lang="ts" setup>
+import { ref, onMounted } from "vue";
 import EventTable from "components/EventTable.vue";
+import { GetUserOptions } from "../../wailsjs/go/main/App";
 
-const handleRowClick = (rowId) => {
+const userOptions = ref<main.UserOptions>(null);
+
+const handleRowClick = (rowId: string) => {
   console.log("Row clicked in parent component with ID:", rowId);
   // Add your handling logic here
 };
+
+onMounted(async () => {
+  try {
+    userOptions.value = await GetUserOptions();
+  } catch (error) {
+    console.log("error getting user options", error);
+  }
+
+  if (virtualListRef.value !== null) {
+    virtualListRef.value.scrollTo(0);
+  }
+  window.runtime.EventsOn("messageReceived", onReceiveMessage);
+});
 </script>
 
 <template>
