@@ -1,4 +1,4 @@
-<script lang="ts">
+<script setup lang="ts">
 import {
   ref,
   watch,
@@ -10,97 +10,91 @@ import {
 import type { ComponentPublicInstance } from "vue";
 import type { QVirtualScroll } from "quasar";
 import type { main } from "../../wailsjs/go/models";
-import { GetMessages } from "../../wailsjs/go/main/App";
+import { GetMessages, SaveUserOptions } from "../../wailsjs/go/main/App";
 import { useQuasar } from "quasar";
 
-export default {
-  setup(props, { emit }) {
-    const $q = useQuasar();
-    const virtualListRef = ref<ComponentPublicInstance<
-      typeof QVirtualScroll
-    > | null>(null);
-    const messages = ref<main.SimpleMessage[]>([]);
-    const isDark = computed(() => $q.dark.isActive);
-    const automaticScrolling = ref(false);
-    const scrollToLatest = ref(true);
-    const userOptions = ref<main.UserOptions>(null);
+const props = defineProps<{
+  userOptions: main.UserOptions;
+}>();
 
-    const fetchMessages = async () => {
-      try {
-        const result = await GetMessages();
-        const excess = result.size - userOptions.value.maxMessagesToKeep;
-        messages.value = excess > 0 ? result.slice(excess) : result;
-        executeScroll();
-      } catch (error) {
-        console.log("error getting existing messages", error);
-      }
-    };
+const emit = defineEmits(["row-click"]);
 
-    const executeScroll = () => {
-      if (scrollToLatest.value && virtualListRef.value) {
-        automaticScrolling.value = true;
-        virtualListRef.value.scrollTo(messages.value.length - 1, "start-force");
-        // Delay resetting automaticScrolling to ensure the scroll animation completes
-        setTimeout(() => {
-          automaticScrolling.value = false;
-        }, 300);
-      }
-    };
+const $q = useQuasar();
+const virtualListRef = ref<ComponentPublicInstance<typeof QVirtualScroll>>();
+const messages = ref<main.SimpleMessage[]>([]);
+const isDark = computed(() => $q.dark.isActive);
+const automaticScrolling = ref(false);
+const scrollToLatest = ref(true);
+const showSettings = ref(false);
+const settings = ref(props.userOptions);
 
-    const onVirtualScroll = () => {
-      if (!automaticScrolling.value) {
-        scrollToLatest.value = false;
-      }
-    };
-
-    const onReceiveMessage = (message: main.SimpleMessage) => {
-      messages.value.push(message);
-      if (scrollToLatest.value) {
-        void nextTick(() => {
-          executeScroll();
-        });
-      }
-    };
-
-    const onRowClick = (row: main.SimpleMessage) => {
-      scrollToLatest.value = false;
-      emit("row-click", row.id);
-    };
-
-    onMounted(async () => {
-      await fetchMessages();
-      if (virtualListRef.value !== null) {
-        virtualListRef.value.scrollTo(0);
-      }
-      window.runtime.EventsOn("messageReceived", onReceiveMessage);
-    });
-
-    onBeforeUnmount(() => {
-      window.runtime.EventsOff("messageReceived");
-    });
-
-    watch(scrollToLatest, () => {
-      if (scrollToLatest.value) {
-        executeScroll();
-      }
-    });
-
-    return {
-      messages,
-      onRowClick,
-      isDark,
-      virtualListRef,
-      onVirtualScroll,
-      executeScroll,
-      scrollToLatest,
-      userOptions,
-      showSettings: ref(false),
-      slideVol: ref(39),
-      slideAlarm: ref(56),
-      slideVibration: ref(63),
-    };
-  },
+const fetchMessages = async () => {
+  try {
+    setAndTrimMessages(await GetMessages());
+    executeScroll();
+  } catch (error) {
+    console.log("error getting existing messages", error);
+  }
 };
+
+const setAndTrimMessages = (incoming: main.SimpleMessage[]) => {
+  const excess = incoming.length - settings.value.maxMessagesToKeep;
+  messages.value = excess > 0 ? incoming.slice(excess) : incoming;
+};
+
+const onReceiveMessage = (message: main.SimpleMessage) => {
+  setAndTrimMessages([...messages.value, message]);
+  if (scrollToLatest.value) {
+    void nextTick(() => {
+      executeScroll();
+    });
+  }
+};
+
+const executeScroll = () => {
+  if (scrollToLatest.value && virtualListRef.value) {
+    automaticScrolling.value = true;
+    virtualListRef.value.scrollTo(messages.value.length - 1, "start-force");
+    // Delay resetting automaticScrolling to ensure the scroll animation completes
+    setTimeout(() => {
+      automaticScrolling.value = false;
+    }, 300);
+  }
+};
+
+const onVirtualScroll = () => {
+  if (!automaticScrolling.value) {
+    scrollToLatest.value = false;
+  }
+};
+
+const onRowClick = (row: main.SimpleMessage) => {
+  scrollToLatest.value = false;
+  emit("row-click", row.id);
+};
+
+const onSaveOptionsClick = async () => {
+  await SaveUserOptions(settings.value);
+  showSettings.value = false;
+};
+
+onMounted(async () => {
+  await fetchMessages();
+  if (virtualListRef.value) {
+    virtualListRef.value.scrollTo(0);
+  }
+  window.runtime.EventsOn("messageReceived", onReceiveMessage);
+});
+
+onBeforeUnmount(() => {
+  window.runtime.EventsOff("messageReceived");
+});
+
+watch(scrollToLatest, () => {
+  if (scrollToLatest.value) {
+    executeScroll();
+  }
+});
 </script>
 
 <template>
@@ -109,10 +103,10 @@ export default {
     <div class="col text-right q-gutter-sm">
       <q-checkbox v-model="scrollToLatest" label="Scroll to latest" />
       <q-icon
-        name="settings"
+        name="refresh"
         size="2em"
         class="cursor-pointer"
-        @click="showSettings = true"
+        @click="fetchMessages()"
       />
       <q-icon
         name="settings"
@@ -166,41 +160,37 @@ export default {
     </template>
   </q-virtual-scroll>
 
-  <q-dialog v-model="showSettings">
+  <q-dialog v-model="showSettings" backdrop-filter="blur(4px) saturate(150%)">
     <q-card style="width: 300px" class="q-px-sm q-pb-md">
-      <q-card-section>
-        <div class="text-h6">Volumes</div>
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">Settings</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
 
-      <q-item-label header>Media volume</q-item-label>
-      <q-item dense>
-        <q-item-section avatar>
-          <q-icon name="volume_up" />
-        </q-item-section>
-        <q-item-section>
-          <q-slider color="teal" v-model="slideVol" :step="0" />
-        </q-item-section>
-      </q-item>
+      <q-card-section class="q-pt-none">
+        <q-input
+          v-model.number="settings.maxMessagesToKeep"
+          type="number"
+          filled
+          label="Max # of messages to keep"
+        />
+      </q-card-section>
 
-      <q-item-label header>Alarm volume</q-item-label>
-      <q-item dense>
-        <q-item-section avatar>
-          <q-icon name="alarm" />
-        </q-item-section>
-        <q-item-section>
-          <q-slider color="teal" v-model="slideAlarm" :step="0" />
-        </q-item-section>
-      </q-item>
-
-      <q-item-label header>Ring volume</q-item-label>
-      <q-item dense>
-        <q-item-section avatar>
-          <q-icon name="vibration" />
-        </q-item-section>
-        <q-item-section>
-          <q-slider color="teal" v-model="slideVibration" :step="0" />
-        </q-item-section>
-      </q-item>
+      <q-card-section class="q-pt-none">
+        <q-input
+          v-model="settings.defaultEndpoint"
+          filled
+          label="Incoming messages path"
+        />
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <q-input v-model="settings.port" filled label="Port" />
+      </q-card-section>
+      <q-separator />
+      <q-card-actions align="right">
+        <q-btn label="Ok" flat color="primary" @click="onSaveOptionsClick()" />
+      </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
