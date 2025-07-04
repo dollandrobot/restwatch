@@ -25,8 +25,8 @@ type SimpleMessage struct {
 // }
 
 func (a *App) launchHandler(statusChannel chan SimpleMessage) {
-	subpath := "/messages"
-	port := 2999
+	subpath := a.userOptions.DefaultEndpoint
+	port := a.userOptions.Port
 	http.HandleFunc(subpath, a.messageHandler(statusChannel))
 
 	runtime.LogInfof(a.ctx, "Listening on port %d at %s", port, subpath)

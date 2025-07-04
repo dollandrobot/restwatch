@@ -1,4 +1,4 @@
-<script lang="ts">
+<script setup lang="ts">
 import {
   ref,
   watch,
@@ -7,92 +7,114 @@ import {
   computed,
   nextTick,
 } from "vue";
+import type { ComponentPublicInstance } from "vue";
+import type { QVirtualScroll } from "quasar";
 import type { main } from "../../wailsjs/go/models";
-import { GetMessages } from "../../wailsjs/go/main/App";
-import { useQuasar } from "quasar";
+import { GetMessages, SaveUserOptions } from "../../wailsjs/go/main/App";
+import { useQuasar, copyToClipboard } from "quasar";
 
-export default {
-  setup(props, { emit }) {
-    const $q = useQuasar();
-    const virtualListRef = ref(null);
-    const messages = ref([]);
-    const isDark = computed(() => $q.dark.isActive);
-    const automaticScrolling = ref(false);
-    const scrollToLatest = ref(true);
+const props = defineProps<{
+  userOptions: main.UserOptions;
+}>();
 
-    const fetchMessages = async () => {
-      try {
-        const result = await GetMessages();
-        messages.value = result;
-        executeScroll();
-      } catch (error) {
-        console.log("error getting existing messages", error);
-      }
-    };
+const emit = defineEmits(["row-click"]);
 
-    const executeScroll = () => {
-      if (scrollToLatest.value) {
-        automaticScrolling.value = true;
-        virtualListRef.value.scrollTo(messages.value.length - 1, "start-force");
-        // Delay resetting automaticScrolling to ensure the scroll animation completes
-        setTimeout(() => {
-          automaticScrolling.value = false;
-        }, 300);
-      }
-    };
+const $q = useQuasar();
+const virtualListRef = ref<ComponentPublicInstance<typeof QVirtualScroll>>();
+const messages = ref<main.SimpleMessage[]>([]);
+const isDark = computed(() => $q.dark.isActive);
+const automaticScrolling = ref(false);
+const scrollToLatest = ref(true);
+const showSettings = ref(false);
+const settings = ref(props.userOptions);
 
-    const onVirtualScroll = () => {
-      if (!automaticScrolling.value) {
-        scrollToLatest.value = false;
-      }
-    };
+const endpoint = computed(() => {
+  return `http://localhost:${settings.value.port}${settings.value.defaultEndpoint}`;
+});
 
-    const onReceiveMessage = (message: main.SimpleMessage) => {
-      messages.value.push(message);
-      if (scrollToLatest.value) {
-        void nextTick(() => {
-          executeScroll();
-        });
-      }
-    };
-
-    const onRowClick = (row) => {
-      scrollToLatest.value = false;
-      emit("row-click", row.id);
-    };
-
-    onMounted(async () => {
-      await fetchMessages();
-      virtualListRef.value.scrollTo(0);
-      window.runtime.EventsOn("messageReceived", onReceiveMessage);
-    });
-
-    onBeforeUnmount(() => {
-      window.runtime.EventsOff("messageReceived");
-    });
-
-    watch(scrollToLatest, () => {
-      if (scrollToLatest.value) {
-        executeScroll();
-      }
-    });
-
-    return {
-      messages,
-      onRowClick,
-      isDark,
-      virtualListRef,
-      onVirtualScroll,
-      executeScroll,
-      scrollToLatest,
-      settings: ref(false),
-
-      slideVol: ref(39),
-      slideAlarm: ref(56),
-      slideVibration: ref(63),
-    };
-  },
+const fetchMessages = async () => {
+  try {
+    setAndTrimMessages(await GetMessages());
+    executeScroll();
+  } catch (error) {
+    console.log("error getting existing messages", error);
+  }
 };
+
+const setAndTrimMessages = (incoming: main.SimpleMessage[]) => {
+  const excess = incoming.length - settings.value.maxMessagesToKeep;
+  messages.value = excess > 0 ? incoming.slice(excess) : incoming;
+};
+
+const onReceiveMessage = (message: main.SimpleMessage) => {
+  setAndTrimMessages([...messages.value, message]);
+  if (scrollToLatest.value) {
+    void nextTick(() => {
+      executeScroll();
+    });
+  }
+};
+
+const executeScroll = () => {
+  if (scrollToLatest.value && virtualListRef.value) {
+    automaticScrolling.value = true;
+    virtualListRef.value.scrollTo(messages.value.length - 1, "start-force");
+    // Delay resetting automaticScrolling to ensure the scroll animation completes
+    setTimeout(() => {
+      automaticScrolling.value = false;
+    }, 300);
+  }
+};
+
+const onVirtualScroll = () => {
+  if (!automaticScrolling.value) {
+    scrollToLatest.value = false;
+  }
+};
+
+const onRowClick = (row: main.SimpleMessage) => {
+  scrollToLatest.value = false;
+  emit("row-click", row.id);
+};
+
+const onSaveOptionsClick = async () => {
+  await SaveUserOptions(settings.value);
+  showSettings.value = false;
+};
+
+const onCopyEndpoint = () => {
+  copyToClipboard(endpoint.value)
+    .then(() =>
+      $q.notify({
+        message: "Copied to clipboard",
+        color: "green",
+      }),
+    )
+    .catch(() =>
+      $q.notify({
+        message: "Failed to copy to clipboard",
+        color: "red",
+      }),
+    );
+};
+
+onMounted(async () => {
+  await fetchMessages();
+  if (virtualListRef.value) {
+    virtualListRef.value.scrollTo(0);
+  }
+  window.runtime.EventsOn("messageReceived", onReceiveMessage);
+});
+
+onBeforeUnmount(() => {
+  window.runtime.EventsOff("messageReceived");
+});
+
+watch(scrollToLatest, () => {
+  if (scrollToLatest.value) {
+    executeScroll();
+  }
+});
 </script>
 
 <template>
@@ -101,10 +123,16 @@ export default {
     <div class="col text-right q-gutter-sm">
       <q-checkbox v-model="scrollToLatest" label="Scroll to latest" />
       <q-icon
+        name="refresh"
+        size="2em"
+        class="cursor-pointer"
+        @click="fetchMessages()"
+      />
+      <q-icon
         name="settings"
         size="2em"
         class="cursor-pointer"
-        @click="settings = true"
+        @click="showSettings = true"
       />
     </div>
   </div>
@@ -152,41 +180,108 @@ export default {
     </template>
   </q-virtual-scroll>
 
-  <q-dialog v-model="settings">
-    <q-card style="width: 300px" class="q-px-sm q-pb-md">
-      <q-card-section>
-        <div class="text-h6">Volumes</div>
+  <q-dialog v-model="showSettings" backdrop-filter="blur(4px) saturate(150%)">
+    <q-card style="width: 40em" class="q-px-sm q-pb-md">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">Settings</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
 
-      <q-item-label header>Media volume</q-item-label>
-      <q-item dense>
-        <q-item-section avatar>
-          <q-icon name="volume_up" />
-        </q-item-section>
-        <q-item-section>
-          <q-slider color="teal" v-model="slideVol" :step="0" />
-        </q-item-section>
-      </q-item>
+      <q-card-section class="q-pt-none">
+        <q-input
+          v-model.number="settings.maxMessagesToKeep"
+          type="number"
+          label-slot
+        >
+          <template v-slot:label>
+            <div class="row items-center all-pointer-events q-gutter-sm">
+              <div>Max messages count</div>
+              <q-icon name="help" />
+              <q-tooltip
+                anchor="top left"
+                self="bottom left"
+                :offset="[0, 8]"
+                transition-show="flip-right"
+                transition-hide="flip-left"
+              >
+                Any messages over this number will be dropped
+              </q-tooltip>
+            </div>
+          </template>
+        </q-input>
+      </q-card-section>
 
-      <q-item-label header>Alarm volume</q-item-label>
-      <q-item dense>
-        <q-item-section avatar>
-          <q-icon name="alarm" />
-        </q-item-section>
-        <q-item-section>
-          <q-slider color="teal" v-model="slideAlarm" :step="0" />
-        </q-item-section>
-      </q-item>
+      <q-card-section class="q-pt-none">
+        <q-input v-model="settings.defaultEndpoint" label-slot>
+          <template v-slot:label>
+            <div class="row items-center all-pointer-events q-gutter-sm">
+              <div>Messages path</div>
+              <q-icon name="help" />
+              <q-tooltip
+                anchor="top left"
+                self="bottom left"
+                :offset="[0, 8]"
+                transition-show="flip-right"
+                transition-hide="flip-left"
+              >
+                The subpath that incoming messages should be sent to
+              </q-tooltip>
+            </div>
+          </template>
+        </q-input>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <q-input v-model="settings.port" label-slot>
+          <template v-slot:label>
+            <div class="row items-center all-pointer-events q-gutter-sm">
+              <div>Port</div>
 
-      <q-item-label header>Ring volume</q-item-label>
-      <q-item dense>
-        <q-item-section avatar>
-          <q-icon name="vibration" />
-        </q-item-section>
-        <q-item-section>
-          <q-slider color="teal" v-model="slideVibration" :step="0" />
-        </q-item-section>
-      </q-item>
+              <q-icon name="help" />
+              <q-tooltip
+                anchor="top left"
+                self="bottom left"
+                :offset="[0, 8]"
+                transition-show="flip-right"
+                transition-hide="flip-left"
+              >
+                The port that incoming messages should be sent to
+              </q-tooltip>
+            </div>
+          </template>
+        </q-input>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <div class="row items-center q-gutter-sm">
+          <q-input v-model="endpoint" label-slot readonly class="col-grow">
+            <template v-slot:label>
+              <div class="row items-center all-pointer-events q-gutter-sm">
+                <div>Endpoint</div>
+
+                <q-icon name="help" />
+                <q-tooltip
+                  anchor="top left"
+                  self="bottom left"
+                  :offset="[0, 8]"
+                  transition-show="flip-right"
+                  transition-hide="flip-left"
+                >
+                  This is the address you should send events to
+                </q-tooltip>
+              </div>
+            </template>
+          </q-input>
+          <q-btn @click="onCopyEndpoint()">
+            <q-icon name="content_copy" size="1.5em">
+              <q-tooltip>Copy to clipboard</q-tooltip>
+            </q-icon>
+          </q-btn>
+        </div>
+      </q-card-section>
+      <q-separator />
+      <q-card-actions align="right">
+        <q-btn label="Ok" flat color="primary" @click="onSaveOptionsClick()" />
+      </q-card-actions>
     </q-card>
   </q-dialog>
 </template>

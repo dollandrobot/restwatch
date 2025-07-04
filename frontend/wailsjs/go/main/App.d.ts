@@ -3,3 +3,7 @@
 import {main} from '../models';
 
 export function GetMessages():Promise<Array<main.SimpleMessage>>;
+
+export function GetUserOptions():Promise<main.UserOptions>;
+
+export function SaveUserOptions(arg1:main.UserOptions):Promise<void>;

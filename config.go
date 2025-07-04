@@ -10,14 +10,18 @@ import (
 )
 
 type UserOptions struct {
-	Port         int  `json:"port"`
-	JumpToLatest bool `json:"jumpToLatest"`
+	Port              int    `json:"port"`
+	MaxMessagesToKeep int    `json:"maxMessagesToKeep"`
+	DefaultEndpoint   string `json:"defaultEndpoint"`
+	JumpToLatest      bool   `json:"jumpToLatest"`
 }
 
 func loadUserOptions() (UserOptions, error) {
 	opts := UserOptions{
-		Port:         2999,
-		JumpToLatest: true,
+		Port:              2999,
+		MaxMessagesToKeep: 100,
+		DefaultEndpoint:   "/messages",
+		JumpToLatest:      true,
 	}
 
 	configDir, err := localConfigDir()
