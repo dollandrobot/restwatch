@@ -19,7 +19,7 @@ type UserOptions struct {
 func loadUserOptions() (UserOptions, error) {
 	opts := UserOptions{
 		Port:              2999,
-		MaxMessagesToKeep: 5,
+		MaxMessagesToKeep: 100,
 		DefaultEndpoint:   "/messages",
 		JumpToLatest:      true,
 	}
