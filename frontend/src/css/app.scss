@@ -15,3 +15,28 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+// Override QMarkdown code block background color
+.q-markdown .q-markdown--code {
+  background-color: #f0f0f0 !important; // Light background for code blocks
+}
+
+.q-markdown .q-markdown--line-numbers {
+  background-color: #f0f0f0 !important; // Light background for code blocks
+}
+
+// Dark mode override for QMarkdown code blocks
+.body--dark .q-markdown .q-markdown--code {
+  background-color: #2d2d2d !important; // Dark background for code blocks in dark mode
+  color: #ffffff !important; // Light text for dark mode
+}
+
+.body--dark .q-markdown .q-markdown--line-numbers {
+  background-color: #2d2d2d !important; // Dark background for code blocks in dark mode
+  color: #ffffff !important; // Light text for dark mode
+}
+
+.body--dark .q-markdown pre code {
+  background-color: #2d2d2d !important; // Dark background for code blocks in dark mode
+  color: #ffffff !important; // Light text for dark mode
+}

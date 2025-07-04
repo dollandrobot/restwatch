@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -15,13 +13,13 @@ import (
 type App struct {
 	ctx            context.Context
 	simulationMode bool
-	statusChannel  chan SimpleMessage
-	messages       []SimpleMessage
+	statusChannel  chan Message
+	messages       []Message
 	userOptions    UserOptions
 }
 
 // NewApp creates a new App application struct
-func NewApp(ch chan SimpleMessage) *App {
+func NewApp(ch chan Message) *App {
 	options, err := loadUserOptions()
 	if err != nil {
 		slog.Error("Cannot determine config directory. Options will not be saved")
@@ -34,7 +32,7 @@ func NewApp(ch chan SimpleMessage) *App {
 	return &App{
 		statusChannel:  ch,
 		simulationMode: true,
-		messages:       []SimpleMessage{},
+		messages:       []Message{},
 		userOptions:    options,
 	}
 }
@@ -54,7 +52,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
-func (a *App) GetMessages() []SimpleMessage {
+func (a *App) GetMessages() []Message {
 	return a.messages
 }
 
@@ -67,47 +65,7 @@ func (a *App) SaveUserOptions(opts UserOptions) error {
 	return saveUserOptions(opts)
 }
 
-func (a *App) runSimulationMode() {
-	cnt := 0
-	for {
-
-		for range 4 {
-			cnt += 1
-			val := fmt.Sprintf(`{"name":"simulated-event-%d"}`, cnt)
-
-			id, err := uuid.NewV7()
-			if err != nil {
-				runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
-			}
-
-			msg := SimpleMessage{
-				Id:         id.String(),
-				Content:    val,
-				ReceivedAt: time.Now(),
-			}
-			a.receiveNewMessage(msg)
-
-		}
-
-		channel := make(chan struct{})
-		// this is a goroutine which executes asynchronously
-		go func() {
-			time.Sleep(5 * time.Second)
-			// send a message to the channel
-			channel <- struct{}{}
-		}()
-
-		// setup a channel listener
-		select {
-		case <-channel:
-			// success
-		case <-time.After(10 * time.Second):
-			// timeout handling
-		}
-	}
-}
-
-func (a *App) receiveNewMessage(msg SimpleMessage) {
+func (a *App) receiveNewMessage(msg Message) {
 	slog.Info("Received message", "message", msg)
 
 	a.messages = append(a.messages, msg)
