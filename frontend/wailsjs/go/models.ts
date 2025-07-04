@@ -1,20 +1,30 @@
 export namespace main {
 	
-	export class SimpleMessage {
+	export class Message {
 	    id: string;
-	    content: string;
 	    // Go type: time
 	    receivedAt: any;
+	    method: string;
+	    body: string;
+	    bodyMarkdown: string;
+	    contentLength: number;
+	    remoteAddr: string;
+	    header: Record<string, string[]>;
 	
 	    static createFrom(source: any = {}) {
-	        return new SimpleMessage(source);
+	        return new Message(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.content = source["content"];
 	        this.receivedAt = this.convertValues(source["receivedAt"], null);
+	        this.method = source["method"];
+	        this.body = source["body"];
+	        this.bodyMarkdown = source["bodyMarkdown"];
+	        this.contentLength = source["contentLength"];
+	        this.remoteAddr = source["remoteAddr"];
+	        this.header = source["header"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

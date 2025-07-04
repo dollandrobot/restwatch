@@ -21,7 +21,7 @@ const emit = defineEmits(["row-click"]);
 
 const $q = useQuasar();
 const virtualListRef = ref<ComponentPublicInstance<typeof QVirtualScroll>>();
-const messages = ref<main.SimpleMessage[]>([]);
+const messages = ref<main.Message[]>([]);
 const isDark = computed(() => $q.dark.isActive);
 const automaticScrolling = ref(false);
 const scrollToLatest = ref(true);
@@ -41,12 +41,12 @@ const fetchMessages = async () => {
   }
 };
 
-const setAndTrimMessages = (incoming: main.SimpleMessage[]) => {
+const setAndTrimMessages = (incoming: main.Message[]) => {
   const excess = incoming.length - settings.value.maxMessagesToKeep;
   messages.value = excess > 0 ? incoming.slice(excess) : incoming;
 };
 
-const onReceiveMessage = (message: main.SimpleMessage) => {
+const onReceiveMessage = (message: main.Message) => {
   setAndTrimMessages([...messages.value, message]);
   if (scrollToLatest.value) {
     void nextTick(() => {
@@ -72,9 +72,9 @@ const onVirtualScroll = () => {
   }
 };
 
-const onRowClick = (row: main.SimpleMessage) => {
+const onRowClick = (row: main.Message) => {
   scrollToLatest.value = false;
-  emit("row-click", row.id);
+  emit("row-click", row);
 };
 
 const onSaveOptionsClick = async () => {
@@ -174,7 +174,7 @@ watch(scrollToLatest, () => {
     <template v-slot:default="{ item: row, index }">
       <tr :key="index" @click="onRowClick(row)">
         <td>#{{ index + 1 }}</td>
-        <td>{{ row.content }}</td>
+        <td>{{ row.body }}</td>
         <td>{{ row.receivedAt }}</td>
       </tr>
     </template>

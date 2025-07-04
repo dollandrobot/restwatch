@@ -18,7 +18,7 @@ var assets embed.FS
 var icon []byte
 
 func main() {
-	ch := make(chan SimpleMessage)
+	ch := make(chan Message)
 
 	app := NewApp(ch)
 
@@ -57,7 +57,7 @@ func main() {
 		},
 		Mac: &mac.Options{
 			TitleBar: &mac.TitleBar{
-				TitlebarAppearsTransparent: true,
+				TitlebarAppearsTransparent: false,
 				HideTitle:                  false,
 				HideTitleBar:               false,
 				FullSizeContent:            false,
