@@ -45,9 +45,9 @@ func (a *App) startup(ctx context.Context) {
 	runtime.LogSetLogLevel(a.ctx, logger.DEBUG)
 	if a.simulationMode {
 		slog.Info("Running in offline mode")
-		go a.runSimulationMode()
+		go a.runSimulationMode(a.ctx)
 	} else {
-		go a.processingIncoming()
+		go a.processingIncoming(a.ctx)
 		go a.launchHandler(a.statusChannel)
 	}
 }
@@ -80,10 +80,13 @@ func (a *App) receiveNewMessage(msg Message) {
 	runtime.EventsEmit(a.ctx, "messageReceived", msg)
 }
 
-func (a *App) processingIncoming() {
+func (a *App) processingIncoming(ctx context.Context) {
 	slog.Info("Processing incoming messages...")
 	for {
-		msg := <-a.statusChannel
-		a.receiveNewMessage(msg)
+		select {
+		case <-ctx.Done():
+		case msg := <-a.statusChannel:
+			a.receiveNewMessage(msg)
+		}
 	}
 }
