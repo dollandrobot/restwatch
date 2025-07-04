@@ -9,45 +9,51 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-func (a *App) runSimulationMode() {
+func (a *App) runSimulationMode(ctx context.Context) {
 	for {
-		val := fmt.Sprintf(`{"%s":"%s", "%s": %d}`,
-			gofakeit.Noun(),
-			gofakeit.Noun(),
-			gofakeit.Noun(),
-			gofakeit.Int())
-
-		id, err := uuid.NewV7()
-		if err != nil {
-			runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
-		}
-
-		msg := Message{
-			Id:            id.String(),
-			ReceivedAt:    time.Now(),
-			Method:        gofakeit.HTTPMethod(),
-			Body:          val,
-			BodyMarkdown:  a.wrapBodyInMarkdown([]byte(val)),
-			ContentLength: int64(len(val)),
-			RemoteAddr:    gofakeit.IPv4Address(),
-			Header:        fakeHeaders(),
-		}
-		a.receiveNewMessage(msg)
-
-		channel := make(chan struct{})
-		// this is a goroutine which executes asynchronously
-		go func() {
-			time.Sleep(time.Duration(gofakeit.IntRange(0, 5)) * time.Second)
-			// send a message to the channel
-			channel <- struct{}{}
-		}()
-
-		// setup a channel listener
 		select {
-		case <-channel:
-			// success
-		case <-time.After(10 * time.Second):
-			// timeout handling
+		case <-ctx.Done():
+			// Exit the loop when the context is canceled
+			return
+		default:
+			val := fmt.Sprintf(`{"%s":"%s", "%s": %d}`,
+				gofakeit.Noun(),
+				gofakeit.Noun(),
+				gofakeit.Noun(),
+				gofakeit.Int())
+
+			id, err := uuid.NewV7()
+			if err != nil {
+				runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
+			}
+
+			msg := Message{
+				Id:            id.String(),
+				ReceivedAt:    time.Now(),
+				Method:        gofakeit.HTTPMethod(),
+				Body:          val,
+				BodyMarkdown:  a.wrapBodyInMarkdown([]byte(val)),
+				ContentLength: int64(len(val)),
+				RemoteAddr:    gofakeit.IPv4Address(),
+				Header:        fakeHeaders(),
+			}
+			a.receiveNewMessage(msg)
+
+			channel := make(chan struct{})
+			// this is a goroutine which executes asynchronously
+			go func() {
+				time.Sleep(time.Duration(gofakeit.IntRange(0, 5)) * time.Second)
+				// send a message to the channel
+				channel <- struct{}{}
+			}()
+
+			// setup a channel listener
+			select {
+			case <-channel:
+				// success
+			case <-time.After(10 * time.Second):
+				// timeout handling
+			}
 		}
 	}
 }
