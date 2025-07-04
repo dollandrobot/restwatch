@@ -49,6 +49,9 @@ func (a *App) wrapBodyInMarkdown(body []byte) string {
 	}
 
 	formatted, err := json.MarshalIndent(jsonMap, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("```\n%s\n```", body)
+	}
 	return fmt.Sprintf("```js\n%s\n```", string(formatted))
 }
 
