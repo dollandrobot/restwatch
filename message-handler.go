@@ -13,10 +13,11 @@ import (
 
 type Message struct {
 	Id            string              `json:"id"`
+	Number        int                 `json:"number"`
 	ReceivedAt    time.Time           `json:"receivedAt"`
 	Method        string              `json:"method"`
 	Body          string              `json:"body"`
-	BodyMarkdown  string              `json:"bodyMarkdown"`
+	FormattedBody string              `json:"formattedBody"`
 	ContentLength int64               `json:"contentLength"`
 	RemoteAddr    string              `json:"remoteAddr"`
 	Header        map[string][]string `json:"header"`
@@ -42,17 +43,17 @@ func (a *App) launchHandler(statusChannel chan Message) {
 }
 
 func (a *App) wrapBodyInMarkdown(body []byte) string {
-	var jsonMap map[string]interface{}
+	var jsonMap map[string]any
 	err := json.Unmarshal(body, &jsonMap)
 	if err != nil {
-		return fmt.Sprintf("```\n%s\n```", body)
+		return string(body)
 	}
 
 	formatted, err := json.MarshalIndent(jsonMap, "", "  ")
 	if err != nil {
-		return fmt.Sprintf("```\n%s\n```", body)
+		return string(body)
 	}
-	return fmt.Sprintf("```js\n%s\n```", string(formatted))
+	return string(formatted)
 }
 
 func (a *App) messageHandler(statusChannel chan Message) http.HandlerFunc {
@@ -66,12 +67,16 @@ func (a *App) messageHandler(statusChannel chan Message) http.HandlerFunc {
 		if err != nil {
 			runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
 		}
+
+		a.messageCount++
+
 		msg := Message{
 			Id:            id.String(),
+			Number:        a.messageCount,
 			ReceivedAt:    time.Now(),
 			Method:        r.Method,
 			Body:          string(body),
-			BodyMarkdown:  a.wrapBodyInMarkdown(body),
+			FormattedBody: a.wrapBodyInMarkdown(body),
 			ContentLength: r.ContentLength,
 			RemoteAddr:    r.RemoteAddr,
 			Header:        r.Header,

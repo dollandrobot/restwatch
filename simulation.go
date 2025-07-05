@@ -17,10 +17,12 @@ func (a *App) runSimulationMode(ctx context.Context) {
 			// Exit the loop when the context is canceled
 			return
 		default:
-			val := fmt.Sprintf(`{"%s":"%s", "%s": %d}`,
+			val := fmt.Sprintf(`{"field1":"%s", "field2":"%s", "field3":"%s", "field4":"%s", "field5":%d, "field6":%d}`,
 				gofakeit.Noun(),
 				gofakeit.Noun(),
 				gofakeit.Noun(),
+				gofakeit.Noun(),
+				gofakeit.Int(),
 				gofakeit.Int())
 
 			id, err := uuid.NewV7()
@@ -28,12 +30,15 @@ func (a *App) runSimulationMode(ctx context.Context) {
 				runtime.LogErrorf(a.ctx, "could not generate id: %s", err)
 			}
 
+			a.messageCount++
+
 			msg := Message{
 				Id:            id.String(),
+				Number:        a.messageCount,
 				ReceivedAt:    time.Now(),
 				Method:        gofakeit.HTTPMethod(),
 				Body:          val,
-				BodyMarkdown:  a.wrapBodyInMarkdown([]byte(val)),
+				FormattedBody: a.wrapBodyInMarkdown([]byte(val)),
 				ContentLength: int64(len(val)),
 				RemoteAddr:    gofakeit.IPv4Address(),
 				Header:        fakeHeaders(),

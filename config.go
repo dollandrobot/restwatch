@@ -14,6 +14,7 @@ type UserOptions struct {
 	MaxMessagesToKeep int    `json:"maxMessagesToKeep"`
 	DefaultEndpoint   string `json:"defaultEndpoint"`
 	JumpToLatest      bool   `json:"jumpToLatest"`
+	MessageFormat     string `json:"messageFormat"`
 }
 
 func loadUserOptions() (UserOptions, error) {
