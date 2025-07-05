@@ -73,7 +73,7 @@ const onVirtualScroll = () => {
 };
 
 const onRowClick = (row: main.Message) => {
-  scrollToLatest.value = false;
+  // scrollToLatest.value = false;
   emit("row-click", row);
 };
 
@@ -146,25 +146,26 @@ watch(scrollToLatest, () => {
     :virtual-scroll-item-size="48"
     :virtual-scroll-sticky-size-start="48"
     @virtual-scroll="onVirtualScroll"
+    class="messages-table"
   >
     <template v-slot:before>
       <thead>
         <tr>
           <th
             :class="{ 'th-dark': isDark, 'th-light': !isDark }"
-            class="text-left no-pointer-events"
+            class="text-left no-pointer-events fixed-num-col-width"
           >
             #
           </th>
           <th
             :class="{ 'th-dark': isDark, 'th-light': !isDark }"
-            class="text-left no-pointer-events"
+            class="text-left no-pointer-events content-col"
           >
             Content
           </th>
           <th
             :class="{ 'th-dark': isDark, 'th-light': !isDark }"
-            class="text-left no-pointer-events"
+            class="text-left no-pointer-events fixed-received-col-width"
           >
             Received At
           </th>
@@ -173,9 +174,9 @@ watch(scrollToLatest, () => {
     </template>
     <template v-slot:default="{ item: row }">
       <tr :key="row.id" @click="onRowClick(row)">
-        <td>#{{ row.number }}</td>
-        <td>{{ row.body }}</td>
-        <td>{{ row.receivedAt }}</td>
+        <td class="fixed-col-width">#{{ row.number }}</td>
+        <td class="content-col">{{ row.body }}</td>
+        <td class="fixed-col-width">{{ row.receivedAt }}</td>
       </tr>
     </template>
   </q-virtual-scroll>
@@ -324,4 +325,23 @@ tr
   &:hover
     background-color: rgba(255, 255, 255, 0.1)
     transition: background-color 0.2s ease
+
+/* Updated styles for fixed columns and ellipsis */
+.messages-table
+  :deep(table)
+    table-layout: fixed
+    width: 100%
+
+.fixed-num-col-width
+  width: 75px;
+
+.fixed-received-col-width
+  width: 250px;
+
+.content-col
+  width: 100%
+  min-width: 0
+  overflow: hidden
+  white-space: nowrap
+  text-overflow: ellipsis
 </style>
