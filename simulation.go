@@ -38,7 +38,7 @@ func (a *App) runSimulationMode(ctx context.Context) {
 				ReceivedAt:    time.Now(),
 				Method:        gofakeit.HTTPMethod(),
 				Body:          val,
-				FormattedBody: a.wrapBodyInMarkdown([]byte(val)),
+				FormattedBody: a.postProcessBody([]byte(val)),
 				ContentLength: int64(len(val)),
 				RemoteAddr:    gofakeit.IPv4Address(),
 				Header:        fakeHeaders(),

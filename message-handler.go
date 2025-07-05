@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,14 +25,6 @@ type Message struct {
 	RemoteAddr    string              `json:"remoteAddr"`
 	Header        map[string][]string `json:"header"`
 }
-
-// type PubSubMessage struct {
-// 	PublishTime   string            `json:"publishTime"`
-// 	Data          string            `json:"data"`
-// 	MessageId     string            `json:"messageId"`
-// 	Attributes    map[string]string `json:"attributes"`
-// 	ExtractedData string
-// }
 
 func (a *App) launchHandler() {
 	subpath := a.userOptions.DefaultEndpoint
@@ -69,18 +62,62 @@ func (a *App) restartServer() {
 	a.startServer()
 }
 
-func (a *App) wrapBodyInMarkdown(body []byte) string {
+func (a *App) postProcessBody(body []byte) string {
 	var jsonMap map[string]any
 	err := json.Unmarshal(body, &jsonMap)
 	if err != nil {
 		return string(body)
 	}
 
+	jsonMap = a.processPubSubMessage(jsonMap)
+
 	formatted, err := json.MarshalIndent(jsonMap, "", "  ")
 	if err != nil {
 		return string(body)
 	}
 	return string(formatted)
+}
+
+func (a *App) processPubSubMessage(jsonMap map[string]any) map[string]any {
+	msgNode, ok := jsonMap["message"]
+	if !ok {
+		return jsonMap
+	}
+
+	msg, ok := msgNode.(map[string]any)
+	if !ok {
+		return jsonMap
+	}
+
+	encodedData, ok := msg["data"]
+	if !ok {
+		return jsonMap
+	}
+
+	decodedData, err := base64.StdEncoding.DecodeString(encodedData.(string))
+	if err != nil {
+		return jsonMap
+	}
+
+	if len(decodedData) != 0 {
+		var data map[string]any
+		err = json.Unmarshal(decodedData, &data)
+		jsonMap["message"].(map[string]any)["data"] = string(decodedData)
+		if err != nil {
+			return jsonMap
+		}
+
+		var jsonData map[string]any
+		err := json.Unmarshal(decodedData, &jsonData)
+		if err != nil {
+			msg["data"] = string(decodedData)
+		} else {
+			msg["data"] = jsonData
+		}
+
+	}
+
+	return jsonMap
 }
 
 func (a *App) messageHandler() http.HandlerFunc {
@@ -103,31 +140,11 @@ func (a *App) messageHandler() http.HandlerFunc {
 			ReceivedAt:    time.Now(),
 			Method:        r.Method,
 			Body:          string(body),
-			FormattedBody: a.wrapBodyInMarkdown(body),
+			FormattedBody: a.postProcessBody(body),
 			ContentLength: r.ContentLength,
 			RemoteAddr:    r.RemoteAddr,
 			Header:        r.Header,
 		}
-
-		//err = json.Unmarshal(body, &msg)
-		//if err != nil {
-		//	fmt.Printf("could not unmarshal body")
-		//}
-		//
-		//decodedData, err := base64.StdEncoding.DecodeString(msg.Message.Data)
-		//if err != nil {
-		//	fmt.Printf("could not decode data: %s\n", err)
-		//	return
-		//}
-		//
-		//if len(decodedData) != 0 {
-		//	var data map[string]interface{}
-		//	err = json.Unmarshal(decodedData, &data)
-		//	if err != nil {
-		//		fmt.Printf("could not unmarshal body")
-		//	}
-		//	msg.Message.ExtractedData = string(decodedData)
-		//}
 
 		a.statusChannel <- msg
 	}
