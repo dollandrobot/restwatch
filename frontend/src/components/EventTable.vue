@@ -73,7 +73,6 @@ const onVirtualScroll = () => {
 };
 
 const onRowClick = (row: main.Message) => {
-  // scrollToLatest.value = false;
   emit("row-click", row);
 };
 
@@ -233,7 +232,7 @@ watch(scrollToLatest, () => {
         </q-input>
       </q-card-section>
       <q-card-section class="q-pt-none">
-        <q-input v-model="settings.port" label-slot>
+        <q-input v-model.number="settings.port" label-slot>
           <template v-slot:label>
             <div class="row items-center all-pointer-events q-gutter-sm">
               <div>Port</div>

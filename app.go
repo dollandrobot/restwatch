@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -11,12 +13,14 @@ import (
 
 // App struct
 type App struct {
-	ctx            context.Context
-	simulationMode bool
-	statusChannel  chan Message
-	messages       []Message
-	userOptions    UserOptions
-	messageCount   int
+	ctx             context.Context
+	simulationMode  bool
+	statusChannel   chan Message
+	messages        []Message
+	userOptions     UserOptions
+	messageCount    int
+	srv             *http.Server
+	serverWaitGroup *sync.WaitGroup
 }
 
 // NewApp creates a new App application struct
@@ -32,7 +36,7 @@ func NewApp(ch chan Message) *App {
 
 	return &App{
 		statusChannel:  ch,
-		simulationMode: true,
+		simulationMode: false,
 		messages:       []Message{},
 		userOptions:    options,
 	}
@@ -49,7 +53,7 @@ func (a *App) startup(ctx context.Context) {
 		go a.runSimulationMode(a.ctx)
 	} else {
 		go a.processingIncoming(a.ctx)
-		go a.launchHandler(a.statusChannel)
+		go a.startServer()
 	}
 }
 
@@ -62,8 +66,16 @@ func (a *App) GetUserOptions() UserOptions {
 }
 
 func (a *App) SaveUserOptions(opts UserOptions) error {
+	var restartService = false
+	if a.userOptions.Port != opts.Port || a.userOptions.DefaultEndpoint != opts.DefaultEndpoint {
+		restartService = true
+	}
 	a.userOptions = opts
-	return saveUserOptions(opts)
+	saveUserOptions(opts)
+	if restartService {
+		a.restartServer()
+	}
+	return nil
 }
 
 func (a *App) receiveNewMessage(msg Message) {

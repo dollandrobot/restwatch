@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,15 +33,40 @@ type Message struct {
 // 	ExtractedData string
 // }
 
-func (a *App) launchHandler(statusChannel chan Message) {
+func (a *App) launchHandler() {
 	subpath := a.userOptions.DefaultEndpoint
 	port := a.userOptions.Port
-	http.HandleFunc(subpath, a.messageHandler(statusChannel))
 
-	runtime.LogInfof(a.ctx, "Listening on port %d at %s", port, subpath)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
-		panic(err)
+	mux := http.NewServeMux()
+	mux.HandleFunc(subpath, a.messageHandler())
+	a.srv = &http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: mux,
 	}
+
+	go func() {
+		runtime.LogInfof(a.ctx, "Listening on port %d at %s", port, subpath)
+		if err := a.srv.ListenAndServe(); err != http.ErrServerClosed {
+			panic(err)
+		}
+		a.serverWaitGroup.Done()
+	}()
+}
+
+func (a *App) startServer() {
+	a.serverWaitGroup = &sync.WaitGroup{}
+
+	a.serverWaitGroup.Add(1)
+	a.launchHandler()
+}
+
+func (a *App) restartServer() {
+	if err := a.srv.Shutdown(context.TODO()); err != nil {
+		runtime.LogErrorf(a.ctx, "could not shutdown server: %s", err)
+	}
+
+	a.serverWaitGroup.Wait()
+	a.startServer()
 }
 
 func (a *App) wrapBodyInMarkdown(body []byte) string {
@@ -56,7 +83,7 @@ func (a *App) wrapBodyInMarkdown(body []byte) string {
 	return string(formatted)
 }
 
-func (a *App) messageHandler(statusChannel chan Message) http.HandlerFunc {
+func (a *App) messageHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -102,6 +129,6 @@ func (a *App) messageHandler(statusChannel chan Message) http.HandlerFunc {
 		//	msg.Message.ExtractedData = string(decodedData)
 		//}
 
-		statusChannel <- msg
+		a.statusChannel <- msg
 	}
 }
