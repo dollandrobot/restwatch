@@ -17,7 +17,7 @@ func (a *App) runSimulationMode(ctx context.Context) {
 			// Exit the loop when the context is canceled
 			return
 		default:
-			val := fmt.Sprintf(`{"field1":"%s", "field2": %s, "field3": %s, "field4": %s, "field5": %d, "field6": %d}`,
+			val := fmt.Sprintf(`{"field1":"%s", "field2":"%s", "field3":"%s", "field4":"%s", "field5":%d, "field6":%d}`,
 				gofakeit.Noun(),
 				gofakeit.Noun(),
 				gofakeit.Noun(),
