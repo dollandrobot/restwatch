@@ -16,6 +16,7 @@ type App struct {
 	statusChannel  chan Message
 	messages       []Message
 	userOptions    UserOptions
+	messageCount   int
 }
 
 // NewApp creates a new App application struct

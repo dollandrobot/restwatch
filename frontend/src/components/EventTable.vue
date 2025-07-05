@@ -171,9 +171,9 @@ watch(scrollToLatest, () => {
         </tr>
       </thead>
     </template>
-    <template v-slot:default="{ item: row, index }">
-      <tr :key="index" @click="onRowClick(row)">
-        <td>#{{ index + 1 }}</td>
+    <template v-slot:default="{ item: row }">
+      <tr :key="row.id" @click="onRowClick(row)">
+        <td>#{{ row.number }}</td>
         <td>{{ row.body }}</td>
         <td>{{ row.receivedAt }}</td>
       </tr>

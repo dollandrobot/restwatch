@@ -2,11 +2,12 @@ export namespace main {
 	
 	export class Message {
 	    id: string;
+	    number: number;
 	    // Go type: time
 	    receivedAt: any;
 	    method: string;
 	    body: string;
-	    bodyMarkdown: string;
+	    formattedBody: string;
 	    contentLength: number;
 	    remoteAddr: string;
 	    header: Record<string, string[]>;
@@ -18,10 +19,11 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.number = source["number"];
 	        this.receivedAt = this.convertValues(source["receivedAt"], null);
 	        this.method = source["method"];
 	        this.body = source["body"];
-	        this.bodyMarkdown = source["bodyMarkdown"];
+	        this.formattedBody = source["formattedBody"];
 	        this.contentLength = source["contentLength"];
 	        this.remoteAddr = source["remoteAddr"];
 	        this.header = source["header"];
@@ -50,6 +52,7 @@ export namespace main {
 	    maxMessagesToKeep: number;
 	    defaultEndpoint: string;
 	    jumpToLatest: boolean;
+	    messageFormat: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UserOptions(source);
@@ -61,6 +64,7 @@ export namespace main {
 	        this.maxMessagesToKeep = source["maxMessagesToKeep"];
 	        this.defaultEndpoint = source["defaultEndpoint"];
 	        this.jumpToLatest = source["jumpToLatest"];
+	        this.messageFormat = source["messageFormat"];
 	    }
 	}
 
